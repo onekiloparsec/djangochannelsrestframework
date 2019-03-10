@@ -1,14 +1,13 @@
 import threading
 from enum import Enum
 from functools import partial
-from typing import Dict, Any, Type, Set, Generator
+from typing import Any, Dict, Generator, Set, Type
 from uuid import uuid4
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.db.models import Model
-from django.db.models.signals import pre_save, post_save, post_delete, \
-    pre_delete
+from django.db.models.signals import post_delete, post_save, pre_delete, pre_save
 from django.dispatch import Signal
 
 from djangochannelsrestframework.consumers import AsyncAPIConsumer
@@ -72,7 +71,7 @@ class BaseObserver:
 
 
 class Observer(BaseObserver):
-    def __init__(self, func, signal: Signal=None, kwargs=None):
+    def __init__(self, func, signal: Signal = None, kwargs=None):
         super().__init__(func)
         if kwargs is None:
             kwargs = {}
@@ -233,8 +232,9 @@ class ModelObserver(BaseObserver):
             return
         message = self.serialize(instance, action, **kwargs)
         channel_layer = get_channel_layer()
+        async2sync = async_to_sync(channel_layer.group_send)
         for group_name in group_names:
-            async_to_sync(channel_layer.group_send)(group_name, message)
+            async2sync(group_name, message)
 
     def group_names(self, *args, **kwargs):
         if self._group_names:
